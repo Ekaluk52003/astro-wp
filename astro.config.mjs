@@ -10,4 +10,5 @@ export default defineConfig({
   site: "https://astroship.web3templates.com",
   integrations: [tailwind(), mdx(), sitemap(), icon()],
   output: "server", // Enable server-side rendering
+  
 });
