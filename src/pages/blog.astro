@@ -1,0 +1,112 @@
+---
+import { Picture } from "astro:assets";
+import Layout from "@layouts/Layout.astro";
+import Container from "@components/container.astro";
+import Sectionhead from "@components/sectionhead.astro";
+
+
+
+const wpApiUrl = `https://new.aartisangrah.com/wp-json/wp/v2/posts?_embed`;
+
+try {
+  // Fetch posts from WordPress API with pagination parameters
+  const response = await fetch(wpApiUrl);
+  const posts = await response.json();
+
+
+  // Format WordPress posts to match the expected structure
+  var publishedBlogEntries = posts.map(post => {
+    // Check if the post has a featured image
+    const hasFeaturedImage = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+    
+    return {
+      slug: post.slug,
+      // Use local slug routes instead of WordPress URLs
+      link: `/blog/${post.slug}`,
+      id: post.id, // Store WordPress post ID for fetching in slug page
+      data: {
+        title: post.title.rendered,
+        category: post._embedded?.['wp:term']?.[0]?.[0]?.name || 'Blog',
+        author: post._embedded?.author?.[0]?.name || 'Author',
+        publishDate: new Date(post.date),
+        // Only include image data if there's actually an image
+        image: hasFeaturedImage ? {
+          src: post._embedded['wp:featuredmedia'][0].source_url,
+          alt: post.title.rendered
+        } : null
+      }
+    };
+  });
+} catch (error) {
+  console.error('Error fetching WordPress posts:', error);
+
+}
+
+
+---
+
+<Layout title="Blog">
+  <Container>
+    <Sectionhead>
+      <Fragment slot="title">Our Blog</Fragment>
+      <Fragment slot="desc">
+        We write about building startups and thoughts going on our mind.
+      </Fragment>
+    </Sectionhead>
+    
+    <!-- Simple heading with no filtering -->
+    
+    <main class="mt-8">
+      <ul class="grid gap-16 max-w-4xl mx-auto">
+        {
+          publishedBlogEntries.map((blogPostEntry, index) => (
+            <li>
+              <a href={blogPostEntry.link} rel="noopener noreferrer">
+                <div class="grid md:grid-cols-2 gap-5 md:gap-10 items-center">
+                  {blogPostEntry.data.image ? (
+                    <Picture
+                      src={blogPostEntry.data.image.src}
+                      alt={blogPostEntry.data.image.alt || blogPostEntry.data.title}
+                      sizes="(max-width: 800px) 100vw, 800px"
+                      width={800}
+                      height={600}
+                      loading={index <= 2 ? "eager" : "lazy"}
+                      decoding={index <= 2 ? "sync" : "async"}
+                      class="w-full rounded-md object-cover object-center bg-white"
+                    />
+                  ) : (
+                    <div class="bg-gray-100 rounded-md w-full h-full min-h-[200px] flex items-center justify-center">
+                      <span class="text-gray-500">No image available</span>
+                    </div>
+                  )}
+                  <div>
+                    <span class="text-blue-400 uppercase tracking-wider text-sm font-medium">
+                      {blogPostEntry.data.category}
+                    </span>
+
+                    <h2 class="text-3xl font-semibold leading-snug tracking-tight mt-1 ">
+                      {blogPostEntry.data.title}
+                    </h2>
+
+                    <div class="flex gap-2 mt-3">
+                      <span class="text-gray-400">
+                        {blogPostEntry.data.author}
+                      </span>
+                      <span class="text-gray-400">• </span>
+                      <time
+                        class="text-gray-400"
+                        datetime={blogPostEntry.data.publishDate.toISOString()}>
+                        {blogPostEntry.data.publishDate.toDateString()}
+                      </time>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+   
+    </main>
+  </Container>
+</Layout>
